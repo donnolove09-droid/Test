@@ -1,3 +1,8 @@
+# ============================================================
+# FILE: .github/workflows/build.yml
+# BẢN SỬA LỖI – BUILD TRỰC TIẾP KHÔNG DÙNG THEOS
+# CHẠY TRÊN GITHUB ACTIONS (macos-latest)
+# ============================================================
 name: Build Tweak FF2019 Jailbreak
 
 on:
@@ -12,55 +17,34 @@ jobs:
       - name: Checkout mã nguồn
         uses: actions/checkout@v4
 
-      - name: Cài Theos
+      - name: Kiểm tra file nguồn
         run: |
-          export THEOS=~/theos
-          git clone --recursive https://github.com/theos/theos.git $THEOS
-          echo "THEOS=$THEOS" >> $GITHUB_ENV
+          ls -la
+          test -f ff2019_jailbreak_all_in_one.c && echo "OK: có file nguồn" || exit 1
 
-      - name: Tạo Theos project
+      - name: Build dylib bằng clang
         run: |
-          mkdir -p layout/DEBIAN
-          cat > control <<'EOF'
-Package: com.thelightasean.ff2019
-Name: thelightasean FF2019
-Version: 1.0.0
-Architecture: iphoneos-arm
-Description: Menu hack FF 2019 cho iPhone jailbreak - Ngắm đầu, Tốc độ x100, Dịch chuyển, Định vị, Đếm địch, Chống ban
-Maintainer: thelightasean
-Author: thelightasean
-Section: Tweaks
-Depends: mobilesubstrate
-EOF
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          echo "SDK = $SDK"
+          mkdir -p output
+          clang -arch arm64 -arch arm64e \
+            -isysroot "$SDK" \
+            -miphoneos-version-min=12.0 \
+            -dynamiclib -O2 \
+            -fobjc-arc \
+            -framework Foundation \
+            -framework UIKit \
+            -framework CoreGraphics \
+            -lpthread \
+            -o output/thelightasean.dylib \
+            ff2019_jailbreak_all_in_one.c
+          ldid -S output/thelightasean.dylib || true
+          file output/thelightasean.dylib
+          ls -la output/
 
-          cat > Makefile <<'EOF'
-ARCHS = arm64 arm64e
-TARGET = iphone:clang:latest:12.0
-INSTALL_TARGET_PROCESSES = FreeFire
-
-include $(THEOS)/makefiles/common.mk
-
-TWEAK_NAME = thelightasean
-thelightasean_FILES = ff2019_jailbreak_all_in_one.c
-thelightasean_CFLAGS = -fobjc-arc
-thelightasean_FRAMEWORKS = Foundation UIKit CoreGraphics
-
-include $(THEOS_MAKE_PATH)/tweak.mk
-EOF
-
-          cat > thelightasean.plist <<'EOF'
-{ Filter = { Bundles = ( "com.garena.game.ff" ); }; }
-EOF
-
-      - name: Build tweak
-        run: |
-          export THEOS=~/theos
-          make package
-          ls -la packages/
-
-      - name: Upload .deb
+      - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
-          name: thelightasean-ff2019-deb
-          path: packages/*.deb
+          name: thelightasean-dylib
+          path: output/thelightasean.dylib
           retention-days: 30
