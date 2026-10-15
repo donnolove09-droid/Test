@@ -1,9 +1,4 @@
-# ============================================================
-# FILE: .github/workflows/build.yml
-# BẢN SỬA LỖI – BUILD TRỰC TIẾP KHÔNG DÙNG THEOS
-# CHẠY TRÊN GITHUB ACTIONS (macos-latest)
-# ============================================================
-name: Build Tweak FF2019 Jailbreak
+name: Build thelightasean Dylib
 
 on:
   push:
@@ -17,29 +12,24 @@ jobs:
       - name: Checkout mã nguồn
         uses: actions/checkout@v4
 
-      - name: Kiểm tra file nguồn
-        run: |
-          ls -la
-          test -f ff2019_jailbreak_all_in_one.c && echo "OK: có file nguồn" || exit 1
+      - name: Cài ldid
+        run: brew install ldid || true
 
-      - name: Build dylib bằng clang
+      - name: Build dylib
         run: |
           SDK=$(xcrun --sdk iphoneos --show-sdk-path)
-          echo "SDK = $SDK"
           mkdir -p output
           clang -arch arm64 -arch arm64e \
             -isysroot "$SDK" \
             -miphoneos-version-min=12.0 \
-            -dynamiclib -O2 \
-            -fobjc-arc \
+            -dynamiclib -O2 -fobjc-arc \
             -framework Foundation \
             -framework UIKit \
             -framework CoreGraphics \
             -lpthread \
             -o output/thelightasean.dylib \
-            ff2019_jailbreak_all_in_one.c
+            thelightasean.c
           ldid -S output/thelightasean.dylib || true
-          file output/thelightasean.dylib
           ls -la output/
 
       - name: Upload dylib
