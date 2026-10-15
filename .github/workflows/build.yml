@@ -1,0 +1,66 @@
+name: Build Tweak FF2019 Jailbreak
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout mã nguồn
+        uses: actions/checkout@v4
+
+      - name: Cài Theos
+        run: |
+          export THEOS=~/theos
+          git clone --recursive https://github.com/theos/theos.git $THEOS
+          echo "THEOS=$THEOS" >> $GITHUB_ENV
+
+      - name: Tạo Theos project
+        run: |
+          mkdir -p layout/DEBIAN
+          cat > control <<'EOF'
+Package: com.thelightasean.ff2019
+Name: thelightasean FF2019
+Version: 1.0.0
+Architecture: iphoneos-arm
+Description: Menu hack FF 2019 cho iPhone jailbreak - Ngắm đầu, Tốc độ x100, Dịch chuyển, Định vị, Đếm địch, Chống ban
+Maintainer: thelightasean
+Author: thelightasean
+Section: Tweaks
+Depends: mobilesubstrate
+EOF
+
+          cat > Makefile <<'EOF'
+ARCHS = arm64 arm64e
+TARGET = iphone:clang:latest:12.0
+INSTALL_TARGET_PROCESSES = FreeFire
+
+include $(THEOS)/makefiles/common.mk
+
+TWEAK_NAME = thelightasean
+thelightasean_FILES = ff2019_jailbreak_all_in_one.c
+thelightasean_CFLAGS = -fobjc-arc
+thelightasean_FRAMEWORKS = Foundation UIKit CoreGraphics
+
+include $(THEOS_MAKE_PATH)/tweak.mk
+EOF
+
+          cat > thelightasean.plist <<'EOF'
+{ Filter = { Bundles = ( "com.garena.game.ff" ); }; }
+EOF
+
+      - name: Build tweak
+        run: |
+          export THEOS=~/theos
+          make package
+          ls -la packages/
+
+      - name: Upload .deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: thelightasean-ff2019-deb
+          path: packages/*.deb
+          retention-days: 30
