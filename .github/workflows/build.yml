@@ -6,7 +6,7 @@ name: Build thelightasean Dylib
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
@@ -15,14 +15,32 @@ jobs:
     steps:
       - name: Checkout mã nguồn
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Show Xcode / xcrun info
+        run: |
+          xcode-select -p || true
+          xcodebuild -version || true
+          xcrun --version || true
 
       - name: Cài ldid
-        run: brew install ldid || true
+        run: |
+          if ! command -v brew >/dev/null 2>&1; then
+            echo "Homebrew không có sẵn — runner có thể đã có brew; tiếp tục"
+          fi
+          brew install ldid || true
 
       - name: Build dylib
+        shell: bash
         run: |
-          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          set -euo pipefail
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path) || { echo "Không tìm thấy iphoneos SDK"; exit 1; }
+          echo "Using SDK: $SDK"
           mkdir -p output
+          if [ ! -f thelightasean.c ]; then
+            echo "Không tìm thấy thelightasean.c trong repo. Kiểm tra đường dẫn hoặc tên file."; ls -la; exit 1;
+          fi
           clang -arch arm64 -arch arm64e \
             -isysroot "$SDK" \
             -miphoneos-version-min=12.0 \
@@ -33,7 +51,10 @@ jobs:
             -lpthread \
             -o output/thelightasean.dylib \
             thelightasean.c
-          ldid -S output/thelightasean.dylib || true
+          # Sign the dylib for device usage (ldid may be optional on CI)
+          if command -v ldid >/dev/null 2>&1; then
+            ldid -S output/thelightasean.dylib || true
+          fi
           ls -la output/
 
       - name: Upload dylib
