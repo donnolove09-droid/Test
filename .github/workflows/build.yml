@@ -1,8 +1,12 @@
+# ============================================================
+# FILE build.yml – COPY CHÍNH XÁC, KHÔNG SỬA
+# ĐẶT VÀO: .github/workflows/build.yml
+# ============================================================
 name: Build thelightasean Dylib
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
